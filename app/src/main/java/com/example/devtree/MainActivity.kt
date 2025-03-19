@@ -34,7 +34,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// スキルノードデータクラス
+//スキルノードデータクラス
 data class SkillNode(
     val id: String,
     val name: String,
