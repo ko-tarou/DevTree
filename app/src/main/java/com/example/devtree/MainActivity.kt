@@ -1,11 +1,13 @@
 package com.example.devtree
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
@@ -19,11 +21,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import kotlin.math.sqrt
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,28 +40,96 @@ class MainActivity : ComponentActivity() {
 }
 
 //スキルノードデータクラス
+enum class Direction {
+    UP, DOWN, LEFT, RIGHT
+}
+
+data class SkillConnection(
+    val targetId: String,
+    val direction: Direction
+)
+
 data class SkillNode(
     val id: String,
     val name: String,
     var level: Int,
     val maxLevel: Int = 5,
     val unlocked: Boolean,
-    val prerequisites: List<String>,
-    val position: Offset
+    val connections: List<SkillConnection>
 )
 
-// サンプルスキルツリーデータ
+
 fun sampleSkillNodes(): List<SkillNode> = listOf(
-    SkillNode("kotlin", "Kotlin", 2, 5, true, listOf(), Offset(300f, 100f)),
-    SkillNode("compose", "Compose", 1, 5, true, listOf("kotlin"), Offset(200f, 300f)),
-    SkillNode("mvvm", "MVVM", 0, 5, false, listOf("compose"), Offset(400f, 300f))
+    SkillNode("kotlin", "Kotlin", 2, 5, true, listOf(
+        SkillConnection("compose", Direction.LEFT),
+        SkillConnection("xml_ui", Direction.RIGHT),
+        SkillConnection("room", Direction.UP),
+        SkillConnection("retrofit", Direction.DOWN)
+    )),
+    SkillNode("compose", "Compose", 1, 5, true, listOf(
+        SkillConnection("mvvm", Direction.DOWN)
+    )),
+    SkillNode("xml_ui", "XML UI", 1, 5, false, listOf()),
+    SkillNode("mvvm", "MVVM", 0, 5, false, listOf(
+        SkillConnection("livedata", Direction.LEFT),
+        SkillConnection("flow", Direction.RIGHT)
+    )),
+    SkillNode("livedata", "LiveData", 0, 5, false, listOf()),
+    SkillNode("flow", "Flow", 0, 5, false, listOf()),
+    SkillNode("retrofit", "Retrofit", 0, 5, false, listOf(
+        SkillConnection("coroutines", Direction.DOWN)
+    )),
+    SkillNode("coroutines", "Coroutines", 0, 5, false, listOf()),
+    SkillNode("room", "Room", 0, 5, false, listOf(
+        SkillConnection("firebase", Direction.UP)
+    )),
+    SkillNode("firebase", "Firebase", 0, 5, false, listOf())
 )
+
+
+
+fun generateNodePositions(
+    nodes: List<SkillNode>,
+    startId: String,
+    gridSize: Float = 200f
+): Map<String, Offset> {
+    val positions = mutableMapOf<String, Offset>()
+    val visited = mutableSetOf<String>()
+    val queue = ArrayDeque<Pair<String, Offset>>()
+
+    positions[startId] = Offset(0f, 0f)
+    queue.add(startId to Offset(0f, 0f))
+
+    while (queue.isNotEmpty()) {
+        val (currentId, currentPos) = queue.removeFirst()
+        if (visited.contains(currentId)) continue
+        visited.add(currentId)
+
+        val currentNode = nodes.find { it.id == currentId } ?: continue
+        for (conn in currentNode.connections) {
+            val targetOffset = when (conn.direction) {
+                Direction.UP -> Offset(currentPos.x, currentPos.y - gridSize)
+                Direction.DOWN -> Offset(currentPos.x, currentPos.y + gridSize)
+                Direction.LEFT -> Offset(currentPos.x - gridSize, currentPos.y)
+                Direction.RIGHT -> Offset(currentPos.x + gridSize, currentPos.y)
+            }
+            if (!positions.containsKey(conn.targetId)) {
+                positions[conn.targetId] = targetOffset
+                queue.add(conn.targetId to targetOffset)
+            }
+        }
+    }
+    return positions
+}
+
 
 // メイン画面
+@SuppressLint("RememberReturnType")
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun SkillTreeMapScreen() {
-    val skills = remember { sampleSkillNodes().toMutableStateList() }
+    val skills = remember { sampleSkillNodes() }
+    val positions = remember { generateNodePositions(skills, startId = "kotlin") }
     val coroutineScope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden)
     var selectedSkill by remember { mutableStateOf<SkillNode?>(null) }
@@ -64,7 +137,7 @@ fun SkillTreeMapScreen() {
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
 
-    val state = rememberTransformableState { zoomChange, offsetChange, _ ->
+    val transformState = rememberTransformableState { zoomChange, offsetChange, _ ->
         scale *= zoomChange
         offset += offsetChange
     }
@@ -83,60 +156,80 @@ fun SkillTreeMapScreen() {
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black)
-                .transformable(state = state)
-                .graphicsLayer(
-                    scaleX = scale,
-                    scaleY = scale,
-                    translationX = offset.x,
-                    translationY = offset.y
-                )
+                .transformable(state = transformState)
         ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                skills.forEach { skill ->
-                    skill.prerequisites.forEach { parentId ->
-                        val parent = skills.find { it.id == parentId }
-                        if (parent != null) {
-                            drawLine(
-                                color = Color.Gray,
-                                start = parent.position,
-                                end = skill.position,
-                                strokeWidth = 4f
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = offset.x,
+                        translationY = offset.y
+                    )
+                    .pointerInput(Unit) {
+                        detectTapGestures { tapOffset ->
+                            val centerOffset = Offset((size.width / 2).toFloat(),
+                                (size.height / 2).toFloat()
                             )
+                            val adjustedTap = (tapOffset - offset) / scale - centerOffset
+                            val tappedSkill = positions.entries.find { (id, pos) ->
+                                val dx = pos.x - adjustedTap.x
+                                val dy = pos.y - adjustedTap.y
+                                val distance = sqrt(dx * dx + dy * dy)
+                                distance < 40f
+                            }?.key?.let { id -> skills.find { it.id == id } }
+
+                            if (tappedSkill != null) {
+                                selectedSkill = tappedSkill
+                                coroutineScope.launch { sheetState.show() }
+                            }
                         }
                     }
-                }
-            }
+            ) {
+                // ⬇️ここで定義（Canvas内）
+                val centerOffset = Offset(size.width / 2, size.height / 2)
 
-            skills.forEach { skill ->
-                Box(
-                    modifier = Modifier
-                        .offset {
-                            IntOffset(
-                                (skill.position.x * scale + offset.x).toInt(),
-                                (skill.position.y * scale + offset.y).toInt()
-                            )
-                        }
-                        .size((80 * scale).dp)
-                        .background(
-                            color = if (skill.unlocked) Color(0xFF4CAF50) else Color.Gray,
-                            shape = CircleShape
+                // 線を描画
+                skills.forEach { skill ->
+                    val startPos = positions[skill.id]?.plus(centerOffset) ?: return@forEach
+                    skill.connections.forEach { conn ->
+                        val endPos = positions[conn.targetId]?.plus(centerOffset) ?: return@forEach
+                        drawLine(
+                            color = Color.Gray,
+                            start = startPos,
+                            end = endPos,
+                            strokeWidth = 4f / scale
                         )
-                        .clickable {
-                            selectedSkill = skill
-                            coroutineScope.launch { sheetState.show() }
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = skill.name,
-                        color = Color.White,
-                        fontSize = (12 * scale).sp
+                    }
+                }
+
+                // ノードを描画
+                skills.forEach { skill ->
+                    val pos = positions[skill.id]?.plus(centerOffset) ?: return@forEach
+                    drawCircle(
+                        color = if (skill.unlocked) Color(0xFF4CAF50) else Color.Gray,
+                        radius = 40f,
+                        center = pos
                     )
+                    drawContext.canvas.nativeCanvas.apply {
+                        drawText(
+                            skill.name,
+                            pos.x - 30f,
+                            pos.y + 5f,
+                            android.graphics.Paint().apply {
+                                color = android.graphics.Color.WHITE
+                                textSize = 24f
+                            }
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+
 
 
 // スキル詳細BottomSheet
