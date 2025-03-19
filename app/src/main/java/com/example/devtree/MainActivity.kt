@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
@@ -19,17 +20,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import kotlin.math.sqrt
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            SkillTreeMapScreen()
+            UnifiedSkillTreeCanvas()
         }
     }
 }
@@ -55,8 +59,8 @@ fun sampleSkillNodes(): List<SkillNode> = listOf(
 // メイン画面
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun SkillTreeMapScreen() {
-    val skills = remember { sampleSkillNodes().toMutableStateList() }
+fun UnifiedSkillTreeCanvas() {
+    val skills = remember { sampleSkillNodes() }
     val coroutineScope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden)
     var selectedSkill by remember { mutableStateOf<SkillNode?>(null) }
@@ -84,14 +88,33 @@ fun SkillTreeMapScreen() {
                 .fillMaxSize()
                 .background(Color.Black)
                 .transformable(state = state)
-                .graphicsLayer(
-                    scaleX = scale,
-                    scaleY = scale,
-                    translationX = offset.x,
-                    translationY = offset.y
-                )
         ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = offset.x,
+                        translationY = offset.y
+                    )
+                    .pointerInput(Unit) {
+                        detectTapGestures { tapOffset ->
+                            // タップ位置からスキルノードを判定
+                            val tappedSkill = skills.find { skill ->
+                                val dx = (skill.position.x * scale + offset.x) - tapOffset.x
+                                val dy = (skill.position.y * scale + offset.y) - tapOffset.y
+                                val distance = sqrt(dx * dx + dy * dy)
+                                distance < 40f * scale
+                            }
+                            if (tappedSkill != null) {
+                                selectedSkill = tappedSkill
+                                coroutineScope.launch { sheetState.show() }
+                            }
+                        }
+                    }
+            ) {
+                // 線を描画
                 skills.forEach { skill ->
                     skill.prerequisites.forEach { parentId ->
                         val parent = skills.find { it.id == parentId }
@@ -100,43 +123,36 @@ fun SkillTreeMapScreen() {
                                 color = Color.Gray,
                                 start = parent.position,
                                 end = skill.position,
-                                strokeWidth = 4f
+                                strokeWidth = 4f / scale
                             )
                         }
                     }
                 }
-            }
 
-            skills.forEach { skill ->
-                Box(
-                    modifier = Modifier
-                        .offset {
-                            IntOffset(
-                                (skill.position.x * scale + offset.x).toInt(),
-                                (skill.position.y * scale + offset.y).toInt()
-                            )
-                        }
-                        .size((80 * scale).dp)
-                        .background(
-                            color = if (skill.unlocked) Color(0xFF4CAF50) else Color.Gray,
-                            shape = CircleShape
-                        )
-                        .clickable {
-                            selectedSkill = skill
-                            coroutineScope.launch { sheetState.show() }
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = skill.name,
-                        color = Color.White,
-                        fontSize = (12 * scale).sp
+                // ノードを描画
+                skills.forEach { skill ->
+                    drawCircle(
+                        color = if (skill.unlocked) Color(0xFF4CAF50) else Color.Gray,
+                        radius = 40f,
+                        center = skill.position
                     )
+                    drawContext.canvas.nativeCanvas.apply {
+                        drawText(
+                            skill.name,
+                            skill.position.x - 30f,
+                            skill.position.y + 5f,
+                            android.graphics.Paint().apply {
+                                color = android.graphics.Color.WHITE
+                                textSize = 24f
+                            }
+                        )
+                    }
                 }
             }
         }
     }
 }
+
 
 
 // スキル詳細BottomSheet
