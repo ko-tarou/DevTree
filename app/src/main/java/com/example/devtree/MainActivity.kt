@@ -169,9 +169,11 @@ fun SkillTreeMapScreen() {
                     )
                     .pointerInput(Unit) {
                         detectTapGestures { tapOffset ->
-                            val adjustedTap = (tapOffset - offset) / scale
+                            val centerOffset = Offset((size.width / 2).toFloat(),
+                                (size.height / 2).toFloat()
+                            )
+                            val adjustedTap = (tapOffset - offset) / scale - centerOffset
                             val tappedSkill = positions.entries.find { (id, pos) ->
-                                val skill = skills.find { it.id == id } ?: return@find false
                                 val dx = pos.x - adjustedTap.x
                                 val dy = pos.y - adjustedTap.y
                                 val distance = sqrt(dx * dx + dy * dy)
@@ -185,11 +187,14 @@ fun SkillTreeMapScreen() {
                         }
                     }
             ) {
-                // 線描画
+                // ⬇️ここで定義（Canvas内）
+                val centerOffset = Offset(size.width / 2, size.height / 2)
+
+                // 線を描画
                 skills.forEach { skill ->
-                    val startPos = positions[skill.id] ?: return@forEach
+                    val startPos = positions[skill.id]?.plus(centerOffset) ?: return@forEach
                     skill.connections.forEach { conn ->
-                        val endPos = positions[conn.targetId] ?: return@forEach
+                        val endPos = positions[conn.targetId]?.plus(centerOffset) ?: return@forEach
                         drawLine(
                             color = Color.Gray,
                             start = startPos,
@@ -199,9 +204,9 @@ fun SkillTreeMapScreen() {
                     }
                 }
 
-                // ノード描画
+                // ノードを描画
                 skills.forEach { skill ->
-                    val pos = positions[skill.id] ?: return@forEach
+                    val pos = positions[skill.id]?.plus(centerOffset) ?: return@forEach
                     drawCircle(
                         color = if (skill.unlocked) Color(0xFF4CAF50) else Color.Gray,
                         radius = 40f,
