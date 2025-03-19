@@ -15,6 +15,9 @@ class SkillTreeViewModel : ViewModel() {
     var offset by mutableStateOf(Offset.Zero)
     var selectedSkill by mutableStateOf<SkillNode?>(null)
 
+    // 🟢 レベル変更の一時保存用
+    var pendingLevelChange by mutableStateOf<Int?>(null)
+
     fun updateSkillLevel(skill: SkillNode, newLevel: Int) {
         skill.level = newLevel
     }
@@ -22,5 +25,13 @@ class SkillTreeViewModel : ViewModel() {
     fun updateTransform(zoomChange: Float, offsetChange: Offset) {
         scale *= zoomChange
         offset += offsetChange
+    }
+
+    fun setPendingLevel(level: Int) {
+        pendingLevelChange = level
+    }
+
+    fun clearPendingLevelChange() {
+        pendingLevelChange = null
     }
 }
