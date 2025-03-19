@@ -13,6 +13,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.devtree.viewmodel.SkillTreeViewModel
@@ -30,6 +31,14 @@ fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
     val sheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden)
     val coroutineScope = rememberCoroutineScope()
 
+    // 🎨 カラーパレット定義
+    val BgColor = Color(0xFFF6F1DE)
+    val LineColor = Color(0xFF3E3F5B)
+    val NodeLockedColor = Color(0xFF3E3F5B)
+    val NodeLvLow = Color(0xFF8AB2A6)
+    val NodeLvHigh = Color(0xFFACD3A8)
+    val TextColor = Color(0xFFFFFFFF)
+
     ModalBottomSheetLayout(
         sheetState = sheetState,
         sheetContent = {
@@ -43,7 +52,7 @@ fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(BgColor)
                 .transformable(
                     state = rememberTransformableState { zoomChange, offsetChange, _ ->
                         viewModel.updateTransform(zoomChange, offsetChange)
@@ -61,7 +70,8 @@ fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
                     )
                     .pointerInput(Unit) {
                         detectTapGestures { tapOffset ->
-                            val centerOffset = Offset((size.width / 2).toFloat(),
+                            val centerOffset = Offset(
+                                (size.width / 2).toFloat(),
                                 (size.height / 2).toFloat()
                             )
                             val adjustedTap = (tapOffset - offset) / scale - centerOffset
@@ -80,34 +90,66 @@ fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
                     }
             ) {
                 val centerOffset = Offset(size.width / 2, size.height / 2)
+
+                // 線の描画
                 skills.forEach { skill ->
                     val startPos = positions[skill.id]?.plus(centerOffset) ?: return@forEach
                     skill.connections.forEach { conn ->
                         val endPos = positions[conn.targetId]?.plus(centerOffset) ?: return@forEach
                         drawLine(
-                            color = Color.Gray,
+                            color = LineColor.copy(alpha = 0.4f),
                             start = startPos,
                             end = endPos,
-                            strokeWidth = 4f / scale
+                            strokeWidth = 3f / scale
                         )
                     }
                 }
+
+                // ノード描画
                 skills.forEach { skill ->
                     val pos = positions[skill.id]?.plus(centerOffset) ?: return@forEach
+
+                    val nodeColor = if (skill.unlocked) {
+                        if (skill.level < 3) NodeLvLow else NodeLvHigh
+                    } else {
+                        NodeLockedColor
+                    }
+
+                    // 光彩（背景ぼかし効果）
                     drawCircle(
-                        color = if (skill.unlocked) Color(0xFF4CAF50) else Color.Gray,
+                        color = nodeColor.copy(alpha = 0.3f),
+                        radius = 50f,
+                        center = pos
+                    )
+
+                    drawCircle(
+                        color = nodeColor,
                         radius = 40f,
                         center = pos
                     )
+
+                    // 文字サイズ調整（長さに応じて）
+                    val baseFontSize = 22f
+                    val adjustedFontSize = when {
+                        skill.name.length <= 4 -> baseFontSize
+                        skill.name.length <= 6 -> baseFontSize * 0.85f
+                        skill.name.length <= 8 -> baseFontSize * 0.75f
+                        else -> baseFontSize * 0.65f
+                    }
+
+                    // テキスト中央描画
                     drawContext.canvas.nativeCanvas.apply {
+                        val paint = android.graphics.Paint().apply {
+                            color = TextColor.toArgb()
+                            textSize = adjustedFontSize
+                            isFakeBoldText = true
+                            textAlign = android.graphics.Paint.Align.CENTER
+                        }
                         drawText(
                             skill.name,
-                            pos.x - 30f,
-                            pos.y + 5f,
-                            android.graphics.Paint().apply {
-                                color = android.graphics.Color.WHITE
-                                textSize = 24f
-                            }
+                            pos.x,
+                            pos.y + adjustedFontSize / 3,
+                            paint
                         )
                     }
                 }
