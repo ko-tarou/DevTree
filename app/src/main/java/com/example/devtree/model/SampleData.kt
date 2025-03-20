@@ -1,28 +1,32 @@
 package com.example.devtree.model
 
 fun sampleSkillNodes(): List<SkillNode> = listOf(
-    SkillNode("kotlin", "Kotlin", 2, 5, listOf(
-        SkillConnection("compose", Direction.LEFT),
-        SkillConnection("xml_ui", Direction.UR),
-        SkillConnection("room", Direction.UP),
-        SkillConnection("retrofit", Direction.DOWN)
+
+    //アプリの基礎
+    SkillNode("application-fundamentals", "基本", 0, 5, listOf(
+        SkillConnection("Languages", Direction.RIGHT),
+        SkillConnection("sample",Direction.LEFT),
+        SkillConnection("retrofits", Direction.DOWN2)
     )),
-    SkillNode("compose", "Compose", 1, 5,  listOf(
-        SkillConnection("mvvm", Direction.DOWN)
+
+    SkillNode("sample","サンプル",0,5, listOf()),
+
+    SkillNode("Languages","言語",0,5, listOf(
+        SkillConnection("Kotlin", Direction.UR),
+        SkillConnection("java", Direction.RIGHT),
+        SkillConnection("C++", Direction.DR),
     )),
-    SkillNode("xml_ui", "XML UI", 1, 5,  listOf()),
-    SkillNode("mvvm", "MVVM", 0, 5,  listOf(
-        SkillConnection("livedata", Direction.LEFT),
-        SkillConnection("flow", Direction.RIGHT)
+
+    SkillNode("Kotlin","Kotlin",0,5, listOf()),
+    SkillNode("java","java",0,5, listOf()),
+    SkillNode("C++","C++",0,5, listOf()),
+
+    SkillNode("retrofits", "Retrofits", 0, 5,  listOf(
+        SkillConnection("coroutines", Direction.DOWN2)
     )),
-    SkillNode("livedata", "LiveData", 0, 5,  listOf()),
-    SkillNode("flow", "Flow", 0, 5,  listOf()),
-    SkillNode("retrofit", "Retrofit", 0, 5,  listOf(
-        SkillConnection("coroutines", Direction.DOWN)
+    SkillNode("coroutines", "Coroutines", 0, 5,  listOf(
+        SkillConnection("room",Direction.DOWN2)
     )),
-    SkillNode("coroutines", "Coroutines", 0, 5,  listOf()),
-    SkillNode("room", "Room", 0, 5,  listOf(
-        SkillConnection("firebase", Direction.UP)
-    )),
-    SkillNode("firebase", "Firebase", 0, 5,  listOf())
+    SkillNode("room", "Room", 2, 5,  listOf()),
+
 )

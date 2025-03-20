@@ -1,9 +1,11 @@
 package com.example.devtree.model
 
+import android.util.Log
+
 fun generateNodePositions(
     nodes: List<SkillNode>,
     startId: String,
-    gridSize: Float = 200f
+    gridSize: Float = 300f
 ): Map<String, androidx.compose.ui.geometry.Offset> {
     val positions = mutableMapOf<String, androidx.compose.ui.geometry.Offset>()
     val visited = mutableSetOf<String>()
@@ -28,6 +30,8 @@ fun generateNodePositions(
                 Direction.UL -> androidx.compose.ui.geometry.Offset(currentPos.x - gridSize,currentPos.y - gridSize)
                 Direction.DR -> androidx.compose.ui.geometry.Offset(currentPos.x + gridSize,currentPos.y + gridSize)
                 Direction.DL -> androidx.compose.ui.geometry.Offset(currentPos.x - gridSize,currentPos.y + gridSize)
+                Direction.UP2 -> androidx.compose.ui.geometry.Offset(currentPos.x,currentPos.y - gridSize*3/2)
+                Direction.DOWN2 -> androidx.compose.ui.geometry.Offset(currentPos.x,currentPos.y + gridSize*3/2)
             }
             if (!positions.containsKey(conn.targetId)) {
                 positions[conn.targetId] = targetOffset

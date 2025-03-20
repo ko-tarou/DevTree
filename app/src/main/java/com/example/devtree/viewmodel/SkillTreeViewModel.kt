@@ -38,7 +38,7 @@ class SkillTreeViewModel(application: Application) : AndroidViewModel(applicatio
             skills.addAll(loadedSkills)
 
             // skillsに基づいて positions を生成（ここで初めて意味ある）
-            positions = generateNodePositions(skills, startId = "kotlin")
+            positions = generateNodePositions(skills, startId = "application-fundamentals")
         }
     }
 

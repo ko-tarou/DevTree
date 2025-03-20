@@ -1,5 +1,6 @@
 package com.example.devtree.ui
 
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -23,6 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.devtree.viewmodel.SkillTreeViewModel
 import com.example.devtree.model.SkillNode
 import kotlinx.coroutines.launch
+import kotlin.math.log
 import kotlin.math.sqrt
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -82,7 +84,6 @@ fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
                     }
                 )
         ) {
-            // 🔒 positionsが空なら描画＆タップ処理を止める
             if (positions.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
@@ -97,16 +98,17 @@ fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
                             translationX = offset.x,
                             translationY = offset.y
                         )
-                        .pointerInput(positions) {  // 🔑 positions変更時のみ再登録
+                        .pointerInput(positions) {
                             detectTapGestures { tapOffset ->
                                 val centerOffset = Offset(size.width / 2f, size.height / 2f)
                                 val adjustedTap = (tapOffset - offset) / scale - centerOffset
-                                val tappedSkill = positions.entries.find { (id, pos) ->
+                                val tappedSkill = positions.entries.find { (id,pos) ->
                                     val dx = pos.x - adjustedTap.x
                                     val dy = pos.y - adjustedTap.y
                                     val distance = sqrt(dx * dx + dy * dy)
                                     distance < 40f
                                 }?.key?.let { id -> skills.find { it.id == id } }
+
 
                                 if (tappedSkill != null) {
                                     viewModel.selectedSkill = tappedSkill
@@ -140,16 +142,16 @@ fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
 
                         drawCircle(
                             color = nodeColor.copy(alpha = 0.3f),
-                            radius = 50f,
+                            radius = 75f,
                             center = pos
                         )
                         drawCircle(
                             color = nodeColor,
-                            radius = 40f,
+                            radius = 60f,
                             center = pos
                         )
 
-                        val baseFontSize = 22f
+                        val baseFontSize = 30f
                         val adjustedFontSize = when {
                             skill.name.length <= 4 -> baseFontSize
                             skill.name.length <= 6 -> baseFontSize * 0.85f
