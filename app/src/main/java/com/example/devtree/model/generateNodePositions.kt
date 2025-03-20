@@ -24,6 +24,10 @@ fun generateNodePositions(
                 Direction.DOWN -> androidx.compose.ui.geometry.Offset(currentPos.x, currentPos.y + gridSize)
                 Direction.LEFT -> androidx.compose.ui.geometry.Offset(currentPos.x - gridSize, currentPos.y)
                 Direction.RIGHT -> androidx.compose.ui.geometry.Offset(currentPos.x + gridSize, currentPos.y)
+                Direction.UR -> androidx.compose.ui.geometry.Offset(currentPos.x + gridSize,currentPos.y - gridSize)
+                Direction.UL -> androidx.compose.ui.geometry.Offset(currentPos.x - gridSize,currentPos.y - gridSize)
+                Direction.DR -> androidx.compose.ui.geometry.Offset(currentPos.x + gridSize,currentPos.y + gridSize)
+                Direction.DL -> androidx.compose.ui.geometry.Offset(currentPos.x - gridSize,currentPos.y + gridSize)
             }
             if (!positions.containsKey(conn.targetId)) {
                 positions[conn.targetId] = targetOffset
