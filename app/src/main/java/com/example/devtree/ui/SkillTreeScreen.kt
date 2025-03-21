@@ -1,6 +1,5 @@
 package com.example.devtree.ui
 
-import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -13,7 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
@@ -24,7 +22,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.devtree.viewmodel.SkillTreeViewModel
 import com.example.devtree.model.SkillNode
 import kotlinx.coroutines.launch
-import kotlin.math.log
 import kotlin.math.sqrt
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -64,6 +61,8 @@ fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
         }
     }
 
+    val canvasSize = remember { mutableStateOf(Offset.Zero) }  // ← Canvasサイズ共有用
+
     ModalBottomSheetLayout(
         sheetState = sheetState,
         sheetContent = {
@@ -83,75 +82,72 @@ fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
                         viewModel.updateTransform(zoomChange, offsetChange)
                     }
                 )
+                .pointerInput(positions, canvasSize.value) {
+                    detectTapGestures { tapOffset ->
+                        val currentScale = viewModel.scale
+                        val currentOffset = viewModel.offset
+                        val centerOffset = Offset(canvasSize.value.x / 2f, canvasSize.value.y / 2f)
+
+                        val adjustedTap = (tapOffset - currentOffset - centerOffset) / currentScale
+
+                        val tappedSkill = positions.entries.find { (id, pos) ->
+                            val dx = pos.x - adjustedTap.x
+                            val dy = pos.y - adjustedTap.y
+                            val distance = sqrt(dx * dx + dy * dy)
+                            distance < 40f
+                        }?.key?.let { id -> skills.find { it.id == id } }
+
+                        if (tappedSkill != null) {
+                            viewModel.selectedSkill = tappedSkill
+                            coroutineScope.launch { sheetState.show() }
+                        }
+                    }
+                }
+
+
+
         ) {
             if (positions.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             } else {
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer(
-                            scaleX = scale,
-                            scaleY = scale,
-                            translationX = offset.x,
-                            translationY = offset.y
-                        )
-                        .pointerInput(positions) {
-                            detectTapGestures { tapOffset ->
-                                val centerOffset = Offset(size.width / 2f, size.height / 2f)
-                                val adjustedTap = (tapOffset - offset) / scale - centerOffset
-                                val tappedSkill = positions.entries.find { (id,pos) ->
-                                    val dx = pos.x - adjustedTap.x
-                                    val dy = pos.y - adjustedTap.y
-                                    val distance = sqrt(dx * dx + dy * dy)
-                                    distance < 40f
-                                }?.key?.let { id -> skills.find { it.id == id } }
-
-
-                                if (tappedSkill != null) {
-                                    viewModel.selectedSkill = tappedSkill
-                                    coroutineScope.launch { sheetState.show() }
-                                }
-                            }
-                        }
-                ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    canvasSize.value = Offset(size.width, size.height)  // ← サイズ記録
                     val centerOffset = Offset(size.width / 2, size.height / 2)
 
                     // 線の描画
                     skills.forEach { skill ->
-                        val startPos = positions[skill.id]?.plus(centerOffset) ?: return@forEach
+                        val startPos = (positions[skill.id] ?: return@forEach) * scale + centerOffset + offset
                         skill.connections.forEach { conn ->
-                            val endPos = positions[conn.targetId]?.plus(centerOffset)
-                                ?: return@forEach
+                            val endPos = (positions[conn.targetId] ?: return@forEach) * scale + centerOffset + offset
                             drawLine(
                                 color = LineColor.copy(alpha = 0.4f),
                                 start = startPos,
                                 end = endPos,
-                                strokeWidth = 3f / scale
+                                strokeWidth = 3f
                             )
                         }
                     }
 
                     // ノード描画
                     skills.forEach { skill ->
-                        val pos = positions[skill.id]?.plus(centerOffset) ?: return@forEach
+                        val pos = (positions[skill.id] ?: return@forEach) * scale + centerOffset + offset
                         val levelIndex = skill.level.coerceIn(0, 5)
                         val nodeColor = LevelColors[levelIndex]
 
                         drawCircle(
                             color = nodeColor.copy(alpha = 0.3f),
-                            radius = 75f,
+                            radius = 75f * scale,
                             center = pos
                         )
                         drawCircle(
                             color = nodeColor,
-                            radius = 60f,
+                            radius = 60f * scale,
                             center = pos
                         )
 
-                        val baseFontSize = 30f
+                        val baseFontSize = 30f * scale
                         val adjustedFontSize = when {
                             skill.name.length <= 4 -> baseFontSize
                             skill.name.length <= 6 -> baseFontSize * 0.85f
@@ -179,7 +175,6 @@ fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
         }
     }
 }
-
 
 @Composable
 fun SkillDetailSheet(skill: SkillNode, setPendingLevel: (Int) -> Unit) {
