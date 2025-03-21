@@ -3,8 +3,7 @@ package com.example.devtree.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -29,8 +28,6 @@ import kotlin.math.sqrt
 fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
     val skills = viewModel.skills
     val positions = viewModel.positions
-    val scale = viewModel.scale
-    val offset = viewModel.offset
     val selectedSkill = viewModel.selectedSkill
     val sheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden)
     val coroutineScope = rememberCoroutineScope()
@@ -48,7 +45,6 @@ fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
         Color(0xFFACD3A8)
     )
 
-    // 🟢 Sheet閉じたときにレベルを反映
     LaunchedEffect(sheetState.isVisible) {
         if (!sheetState.isVisible) {
             selectedSkill?.let { skill ->
@@ -61,7 +57,13 @@ fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
         }
     }
 
-    val canvasSize = remember { mutableStateOf(Offset.Zero) }  // ← Canvasサイズ共有用
+    val canvasSize = remember { mutableStateOf(Offset.Zero) }
+
+    var scaleState by remember { mutableStateOf(1f) }
+    var offsetState by remember { mutableStateOf(Offset.Zero) }
+
+    viewModel.scale = scaleState
+    viewModel.offset = offsetState
 
     ModalBottomSheetLayout(
         sheetState = sheetState,
@@ -77,16 +79,21 @@ fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
             modifier = Modifier
                 .fillMaxSize()
                 .background(BgColor)
-                .transformable(
-                    state = rememberTransformableState { zoomChange, offsetChange, _ ->
-                        viewModel.updateTransform(zoomChange, offsetChange)
+                .pointerInput(Unit) {
+                    detectTransformGestures { centroid, pan, zoom, _ ->
+                        val canvasCenter = canvasSize.value / 2f
+                        val relativeToCenter = centroid - canvasCenter - offsetState
+
+                        // ズレ補正: 支点から中心の距離に(1 - zoom)を掛けてoffset調整
+                        offsetState += pan + relativeToCenter * (1 - zoom)
+                        scaleState *= zoom
                     }
-                )
+                }
                 .pointerInput(positions, canvasSize.value) {
                     detectTapGestures { tapOffset ->
-                        val currentScale = viewModel.scale
-                        val currentOffset = viewModel.offset
-                        val centerOffset = Offset(canvasSize.value.x / 2f, canvasSize.value.y / 2f)
+                        val currentScale = scaleState
+                        val currentOffset = offsetState
+                        val centerOffset = canvasSize.value / 2f
 
                         val adjustedTap = (tapOffset - currentOffset - centerOffset) / currentScale
 
@@ -103,9 +110,6 @@ fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
                         }
                     }
                 }
-
-
-
         ) {
             if (positions.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -113,14 +117,14 @@ fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
                 }
             } else {
                 Canvas(modifier = Modifier.fillMaxSize()) {
-                    canvasSize.value = Offset(size.width, size.height)  // ← サイズ記録
+                    canvasSize.value = Offset(size.width, size.height)
                     val centerOffset = Offset(size.width / 2, size.height / 2)
 
                     // 線の描画
                     skills.forEach { skill ->
-                        val startPos = (positions[skill.id] ?: return@forEach) * scale + centerOffset + offset
+                        val startPos = (positions[skill.id] ?: return@forEach) * scaleState + centerOffset + offsetState
                         skill.connections.forEach { conn ->
-                            val endPos = (positions[conn.targetId] ?: return@forEach) * scale + centerOffset + offset
+                            val endPos = (positions[conn.targetId] ?: return@forEach) * scaleState + centerOffset + offsetState
                             drawLine(
                                 color = LineColor.copy(alpha = 0.4f),
                                 start = startPos,
@@ -132,22 +136,22 @@ fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
 
                     // ノード描画
                     skills.forEach { skill ->
-                        val pos = (positions[skill.id] ?: return@forEach) * scale + centerOffset + offset
+                        val pos = (positions[skill.id] ?: return@forEach) * scaleState + centerOffset + offsetState
                         val levelIndex = skill.level.coerceIn(0, 5)
                         val nodeColor = LevelColors[levelIndex]
 
                         drawCircle(
                             color = nodeColor.copy(alpha = 0.3f),
-                            radius = 90f * scale,
+                            radius = 90f * scaleState,
                             center = pos
                         )
                         drawCircle(
                             color = nodeColor,
-                            radius = 80f * scale,
+                            radius = 80f * scaleState,
                             center = pos
                         )
 
-                        val baseFontSize = 25f * scale
+                        val baseFontSize = 25f * scaleState
                         val adjustedFontSize = when {
                             skill.name.length <= 6 -> baseFontSize
                             skill.name.length <= 10 -> baseFontSize * 0.85f
