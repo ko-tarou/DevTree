@@ -30,8 +30,17 @@ fun generateNodePositions(
                 Direction.UL -> androidx.compose.ui.geometry.Offset(currentPos.x - gridSize,currentPos.y - gridSize)
                 Direction.DR -> androidx.compose.ui.geometry.Offset(currentPos.x + gridSize,currentPos.y + gridSize)
                 Direction.DL -> androidx.compose.ui.geometry.Offset(currentPos.x - gridSize,currentPos.y + gridSize)
-                Direction.UP2 -> androidx.compose.ui.geometry.Offset(currentPos.x,currentPos.y - gridSize*3/2)
-                Direction.DOWN2 -> androidx.compose.ui.geometry.Offset(currentPos.x,currentPos.y + gridSize*3/2)
+                Direction.UUL -> androidx.compose.ui.geometry.Offset(currentPos.x - gridSize,currentPos.y - gridSize*2)
+                Direction.UUR -> androidx.compose.ui.geometry.Offset(currentPos.x + gridSize,currentPos.y - gridSize*2)
+                Direction.DDR -> androidx.compose.ui.geometry.Offset(currentPos.x + gridSize,currentPos.y + gridSize*2)
+                Direction.DDL -> androidx.compose.ui.geometry.Offset(currentPos.x - gridSize,currentPos.y + gridSize*2)
+                Direction.UUUR -> androidx.compose.ui.geometry.Offset(currentPos.x + gridSize,currentPos.y - gridSize*3)
+                Direction.DDDR -> androidx.compose.ui.geometry.Offset(currentPos.x + gridSize,currentPos.y + gridSize*3)
+                Direction.DDDL -> androidx.compose.ui.geometry.Offset(currentPos.x - gridSize,currentPos.y + gridSize*3)
+                Direction.UP2 -> androidx.compose.ui.geometry.Offset(currentPos.x,currentPos.y - gridSize*2)
+                Direction.DOWN2 -> androidx.compose.ui.geometry.Offset(currentPos.x,currentPos.y + gridSize*2)
+                Direction.DOWN3 -> androidx.compose.ui.geometry.Offset(currentPos.x,currentPos.y + gridSize*3)
+                Direction.DOWN6 -> androidx.compose.ui.geometry.Offset(currentPos.x,currentPos.y + gridSize*6)
             }
             if (!positions.containsKey(conn.targetId)) {
                 positions[conn.targetId] = targetOffset

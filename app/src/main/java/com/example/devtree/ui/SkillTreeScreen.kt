@@ -125,7 +125,7 @@ fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
                                 color = LineColor.copy(alpha = 0.4f),
                                 start = startPos,
                                 end = endPos,
-                                strokeWidth = 3f
+                                strokeWidth = 10f
                             )
                         }
                     }
@@ -138,20 +138,20 @@ fun SkillTreeScreen(viewModel: SkillTreeViewModel = viewModel()) {
 
                         drawCircle(
                             color = nodeColor.copy(alpha = 0.3f),
-                            radius = 75f * scale,
+                            radius = 90f * scale,
                             center = pos
                         )
                         drawCircle(
                             color = nodeColor,
-                            radius = 60f * scale,
+                            radius = 80f * scale,
                             center = pos
                         )
 
-                        val baseFontSize = 30f * scale
+                        val baseFontSize = 25f * scale
                         val adjustedFontSize = when {
-                            skill.name.length <= 4 -> baseFontSize
-                            skill.name.length <= 6 -> baseFontSize * 0.85f
-                            skill.name.length <= 8 -> baseFontSize * 0.75f
+                            skill.name.length <= 6 -> baseFontSize
+                            skill.name.length <= 10 -> baseFontSize * 0.85f
+                            skill.name.length <= 14 -> baseFontSize * 0.75f
                             else -> baseFontSize * 0.65f
                         }
 

@@ -1,7 +1,7 @@
 package com.example.devtree.model
 
 enum class Direction {
-    UP, DOWN, LEFT, RIGHT,UR,UL,DR,DL,UP2,DOWN2
+    UP, DOWN, LEFT, RIGHT,UR,UL,DR,DL,UP2,DOWN2,DOWN3,UUL,UUR,UUUR,DDR,DDDR,DDL,DDDL,DOWN6
 }
 
 data class SkillConnection(
